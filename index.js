@@ -1,59 +1,54 @@
-import axios from "axios";
+import express from "express";
+import * as dotenv from "dotenv";
+import cors from "cors";
+import mongoose from "mongoose";
+import UserRoutes from "./routes/User.js";
+import FoodRoutes from "./routes/Food.js";
+dotenv.config();
 
-const API = axios.create({
-  baseURL: "https://fooddelivery-mern.onrender.com/api/",
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true })); // for form data
+
+app.use("/api/user/", UserRoutes);
+app.use("/api/food/", FoodRoutes);
+
+// error handler
+app.use((err, req, res, next) => {
+  const status = err.status || 500;
+  const message = err.message || "Something went wrong";
+  return res.status(status).json({
+    success: false,
+    status,
+    message,
+  });
 });
 
-//auth
-export const UserSignUp = async (data) => await API.post("/user/signup", data);
-export const UserSignIn = async (data) => await API.post("/user/signin", data);
-
-//products
-export const getAllProducts = async (filter) =>
-  await API.get(`/food?${filter}`, filter);
-
-export const getProductDetails = async (id) => await API.get(`/food/${id}`);
-
-//Cart
-export const getCart = async (token) =>
-  await API.get(`/user/cart`, {
-    headers: { Authorization: `Bearer ${token}` },
+app.get("/", async (req, res) => {
+  res.status(200).json({
+    message: "Hello developers from GFG",
   });
+});
 
-export const addToCart = async (token, data) =>
-  await API.post(`/user/cart/`, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+const connectDB = () => {
+  mongoose.set("strictQuery", true);
+  mongoose
+    .connect(process.env.MONGODB_URL)
+    .then(() => console.log("Connected to Mongo DB"))
+    .catch((err) => {
+      console.error("failed to connect with mongo");
+      console.error(err);
+    });
+};
 
-export const deleteFromCart = async (token, data) =>
-  await API.patch(`/user/cart/`, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+const startServer = async () => {
+  try {
+    connectDB();
+    app.listen(8080, () => console.log("Server started on port 8080"));
+  } catch (error) {
+    console.log(error);
+  }
+};
 
-//favorites
-
-export const getFavourite = async (token) =>
-  await API.get(`/user/favorite`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-export const addToFavourite = async (token, data) =>
-  await API.post(`/user/favorite/`, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-export const deleteFromFavourite = async (token, data) =>
-  await API.patch(`/user/favorite/`, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-//Orders
-export const placeOrder = async (token, data) =>
-  await API.post(`/user/order/`, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-export const getOrders = async (token) =>
-  await API.get(`/user/order/`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+startServer();
